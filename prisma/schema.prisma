@@ -1,0 +1,66 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  passwordHash String
+  fullName     String
+  email        String?  @unique
+  phoneNumber  String?  @unique
+  role         String   @default("ADMIN")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  calculations CalculationHistory[]
+}
+
+model GoldRate {
+  id        String   @id @default(uuid())
+  date      DateTime @unique @db.Date
+  rate22K   Float
+  rate24K   Float?
+  updatedBy String
+  updatedAt DateTime @updatedAt
+}
+
+model ItemMaster {
+  id                  String   @id @default(uuid())
+  name                String   @unique
+  defaultMakingCharge Float
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  calculations        CalculationHistory[]
+}
+
+model SystemSettings {
+  id            String   @id @default(uuid())
+  gstPercentage Float    @default(3.0)
+  updatedAt     DateTime @updatedAt
+}
+
+model CalculationHistory {
+  id             String   @id @default(uuid())
+  userId         String
+  itemId         String
+  weight         Float
+  purity         String
+  goldRate       Float
+  makingCharge   Float
+  gstPercentage  Float
+  finalAmount    Float
+  createdAt      DateTime @default(now())
+
+  user           User       @relation(fields: [userId], references: [id])
+  item           ItemMaster @relation(fields: [itemId], references: [id])
+}

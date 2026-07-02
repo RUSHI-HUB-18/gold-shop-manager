@@ -55,3 +55,39 @@ export interface ApiResponse<T = any> {
   error?: string;
   data?: T;
 }
+
+export type CustomerStatus = 'ACTIVE' | 'INACTIVE';
+
+export interface Customer {
+  id: string;
+  customerCode: string;
+  fullName: string;
+  mobileNumber: string;
+  email?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pincode?: string | null;
+  gstNumber?: string | null;
+  birthDate?: string | null;
+  anniversary?: string | null;
+  notes?: string | null;
+  status: CustomerStatus;
+  createdAt: string;
+  updatedAt: string;
+  calculations?: HistoryEntry[];
+}
+
+export interface CustomerFormPayload {
+  fullName: string;
+  mobileNumber: string;
+  email?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  gstNumber?: string;
+  birthDate?: string | null;
+  anniversary?: string | null;
+  notes?: string;
+}

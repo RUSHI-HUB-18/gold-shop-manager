@@ -8,6 +8,7 @@ export const API_ROUTES = {
   ITEMS: '/api/items',
   SETTINGS: '/api/settings',
   HISTORY: '/api/history',
+  CUSTOMERS: '/api/customers',
 };
 
 export const PASSWORD_RULES = {

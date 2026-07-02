@@ -53,6 +53,7 @@ model CalculationHistory {
   id             String   @id @default(uuid())
   userId         String
   itemId         String
+  customerId     String?
   weight         Float
   purity         String
   goldRate       Float
@@ -63,4 +64,31 @@ model CalculationHistory {
 
   user           User       @relation(fields: [userId], references: [id])
   item           ItemMaster @relation(fields: [itemId], references: [id])
+  customer       Customer?  @relation(fields: [customerId], references: [id])
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model Customer {
+  id           String               @id @default(uuid())
+  customerCode String               @unique
+  fullName     String
+  mobileNumber String               @unique
+  email        String?              @unique
+  address      String?
+  city         String?
+  state        String?
+  pincode      String?
+  gstNumber    String?              @unique
+  birthDate    DateTime?
+  anniversary  DateTime?
+  notes        String?
+  status       CustomerStatus       @default(ACTIVE)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  calculations CalculationHistory[]
 }

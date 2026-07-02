@@ -60,6 +60,7 @@ export async function POST(request: Request) {
       data: {
         userId,
         itemId: data.itemId,
+        customerId: data.customerId || null,
         weight: parseFloat(data.weight),
         purity: data.purity || '22K',
         goldRate: parseFloat(data.goldRate),

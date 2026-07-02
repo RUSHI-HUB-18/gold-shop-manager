@@ -31,6 +31,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <nav className="nav-menu">
           <a href="/admin" className="nav-item">Dashboard</a>
           <a href="/admin/calculator" className="nav-item" style={{ color: 'var(--primary)', fontWeight: '600' }}>⚡ Calculator</a>
+          <a href="/admin/customers" className="nav-item">👥 Customers</a>
           <a href="/admin/items" className="nav-item">Item Master</a>
           <a href="/admin/settings" className="nav-item">Settings</a>
           <a href="/admin/history" className="nav-item">History</a>

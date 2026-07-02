@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Item, GoldRate, SystemSettings } from '@/types';
+import { Item, GoldRate, SystemSettings, Customer } from '@/types';
 import { apiClient } from '@/utils/api';
 import { formatCurrency } from '@/utils/currency';
 import { formatPercent } from '@/utils/format';
 import { calculatorService } from '@/services/calculatorService';
+import { customerService } from '@/services/customerService';
 import { Spinner } from '@/components/ui/Spinner';
 import { Alert } from '@/components/ui/Alert';
 import { Card } from '@/components/ui/Card';
@@ -15,11 +16,13 @@ export default function Calculator() {
   const [items, setItems] = useState<Item[]>([]);
   const [goldRate, setGoldRate] = useState<GoldRate | null>(null);
   const [settings, setSettings] = useState<SystemSettings | null>(null);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   // Form State
   const [selectedItem, setSelectedItem] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState('');
   const [purity, setPurity] = useState('22K');
   const [weight, setWeight] = useState('');
   const [makingCharge, setMakingCharge] = useState('');
@@ -38,15 +41,17 @@ export default function Calculator() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [itemsData, rateData, settingsData] = await Promise.all([
+        const [itemsData, rateData, settingsData, customersData] = await Promise.all([
           apiClient.get<{ items: Item[] }>('/api/items'),
           apiClient.get<{ goldRate: GoldRate }>('/api/gold-rate'),
-          apiClient.get<{ settings: SystemSettings }>('/api/settings')
+          apiClient.get<{ settings: SystemSettings }>('/api/settings'),
+          customerService.getCustomers({ limit: 1000, status: 'ACTIVE' }).catch(() => ({ customers: [] }))
         ]);
 
         if (itemsData.items) setItems(itemsData.items);
         if (rateData.goldRate) setGoldRate(rateData.goldRate);
         if (settingsData.settings) setSettings(settingsData.settings);
+        if (customersData && customersData.customers) setCustomers(customersData.customers);
         setLoading(false);
       } catch (err: any) {
         console.error('Fetch error:', err);
@@ -104,6 +109,7 @@ export default function Calculator() {
       const activeRate = purity === '22K' ? goldRate.rate22K : (goldRate.rate24K || goldRate.rate22K);
       await apiClient.post('/api/history', {
         itemId: selectedItem,
+        customerId: selectedCustomer || null,
         weight: parseFloat(weight),
         purity,
         goldRate: activeRate,
@@ -121,6 +127,7 @@ export default function Calculator() {
 
   const handleReset = () => {
     setSelectedItem('');
+    setSelectedCustomer('');
     setPurity('22K');
     setWeight('');
     setMakingCharge('');
@@ -179,6 +186,19 @@ export default function Calculator() {
         <div className="form-container">
           <h2 style={{ fontSize: '1.1rem', marginBottom: '1.5rem', color: 'var(--muted-foreground)' }}>Calculation Inputs</h2>
           <form className="premium-form" onSubmit={e => e.preventDefault()}>
+            <div className="form-group">
+              <label htmlFor="calc-customer">Select Customer (Optional)</label>
+              <select
+                id="calc-customer"
+                value={selectedCustomer}
+                onChange={e => setSelectedCustomer(e.target.value)}
+                style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)', fontFamily: 'inherit', fontSize: '1rem' }}
+              >
+                <option value="">-- Choose Customer --</option>
+                {customers.map(c => <option key={c.id} value={c.id}>{c.customerCode} - {c.fullName} ({c.mobileNumber})</option>)}
+              </select>
+            </div>
+
             <div className="form-group">
               <label htmlFor="calc-item">Select Item *</label>
               <select

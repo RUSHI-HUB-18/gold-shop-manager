@@ -12,25 +12,31 @@ export async function POST(request: Request) {
     }
 
     const trimmedIdentifier = identifier.trim();
+    const trimmedPassword = password.trim();
 
-    // Query user by email or phone number
-    const user = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email: trimmedIdentifier.toLowerCase() },
-          { phoneNumber: trimmedIdentifier }
-        ]
-      }
-    });
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneRegex = /^\d{10}$/;
 
-    if (!user) {
-      return NextResponse.json({ success: false, error: 'Invalid email/phone or password.', message: 'Invalid email/phone or password.' }, { status: 401 });
+    let user = null;
+
+    if (emailRegex.test(trimmedIdentifier)) {
+      const email = trimmedIdentifier.toLowerCase();
+      user = await prisma.user.findUnique({ where: { email } });
+    } else if (phoneRegex.test(trimmedIdentifier)) {
+      const phoneNumber = trimmedIdentifier;
+      user = await prisma.user.findUnique({ where: { phoneNumber } });
+    } else {
+      return NextResponse.json({ success: false, error: 'Please enter a valid Email Address or Mobile Number.', message: 'Please enter a valid Email Address or Mobile Number.' }, { status: 400 });
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Invalid Email Address or Mobile Number.', message: 'Invalid Email Address or Mobile Number.' }, { status: 401 });
+    }
+
+    const isPasswordValid = await bcrypt.compare(trimmedPassword, user.passwordHash);
 
     if (!isPasswordValid) {
-      return NextResponse.json({ success: false, error: 'Invalid email/phone or password.', message: 'Invalid email/phone or password.' }, { status: 401 });
+      return NextResponse.json({ success: false, error: 'Invalid Email Address or Mobile Number.', message: 'Invalid Email Address or Mobile Number.' }, { status: 401 });
     }
 
     // Pass email or phone number as username parameter to match signToken type definition

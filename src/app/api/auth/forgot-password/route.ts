@@ -24,24 +24,29 @@ export async function POST(request: Request) {
   try {
     const { action, identifier, otp, newPassword } = await request.json();
 
-    if (!identifier) {
-      return NextResponse.json({ error: 'Email or phone number is required.' }, { status: 400 });
+    const trimmedIdentifier = typeof identifier === 'string' ? identifier.trim() : '';
+
+    if (!trimmedIdentifier) {
+      return NextResponse.json({ success: false, error: 'Email or Mobile Number is required.', message: 'Email or Mobile Number is required.' }, { status: 400 });
     }
 
-    const trimmedIdentifier = identifier.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneRegex = /^\d{10}$/;
 
-    // Find user by either email or phoneNumber
-    const user = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email: trimmedIdentifier.toLowerCase() },
-          { phoneNumber: trimmedIdentifier }
-        ]
-      }
-    });
+    let user = null;
+
+    if (emailRegex.test(trimmedIdentifier)) {
+      const email = trimmedIdentifier.toLowerCase();
+      user = await prisma.user.findUnique({ where: { email } });
+    } else if (phoneRegex.test(trimmedIdentifier)) {
+      const phoneNumber = trimmedIdentifier;
+      user = await prisma.user.findUnique({ where: { phoneNumber } });
+    } else {
+      return NextResponse.json({ success: false, error: 'Please enter a valid Email Address or Mobile Number.', message: 'Please enter a valid Email Address or Mobile Number.' }, { status: 400 });
+    }
 
     if (!user) {
-      return NextResponse.json({ error: 'No account registered with this email or phone number.' }, { status: 404 });
+      return NextResponse.json({ success: false, error: 'No account registered with this email or phone number.', message: 'No account registered with this email or phone number.' }, { status: 404 });
     }
 
     // Use user ID as the key for OTP map to prevent issues if identifier format varies
@@ -65,26 +70,26 @@ export async function POST(request: Request) {
 
     if (action === 'reset-password') {
       if (!otp || !newPassword) {
-        return NextResponse.json({ error: 'OTP and new password are required.' }, { status: 400 });
+        return NextResponse.json({ success: false, error: 'OTP and new password are required.', message: 'OTP and new password are required.' }, { status: 400 });
       }
 
       const stored = otps.get(key);
       if (!stored) {
-        return NextResponse.json({ error: 'OTP has expired or not requested. Please request a new OTP.' }, { status: 400 });
+        return NextResponse.json({ success: false, error: 'OTP has expired or not requested. Please request a new OTP.', message: 'OTP has expired or not requested. Please request a new OTP.' }, { status: 400 });
       }
 
       if (Date.now() > stored.expires) {
         otps.delete(key);
-        return NextResponse.json({ error: 'OTP has expired. Please request a new OTP.' }, { status: 400 });
+        return NextResponse.json({ success: false, error: 'OTP has expired. Please request a new OTP.', message: 'OTP has expired. Please request a new OTP.' }, { status: 400 });
       }
 
       if (stored.otp !== otp.trim()) {
-        return NextResponse.json({ error: 'Invalid OTP code. Please try again.' }, { status: 400 });
+        return NextResponse.json({ success: false, error: 'Invalid OTP code. Please try again.', message: 'Invalid OTP code. Please try again.' }, { status: 400 });
       }
 
       const passwordError = validatePassword(newPassword);
       if (passwordError) {
-        return NextResponse.json({ error: passwordError }, { status: 400 });
+        return NextResponse.json({ success: false, error: passwordError, message: passwordError }, { status: 400 });
       }
 
       const passwordHash = await bcrypt.hash(newPassword, 12);
@@ -95,12 +100,12 @@ export async function POST(request: Request) {
 
       otps.delete(key);
 
-      return NextResponse.json({ message: 'Password reset successful! You can now log in.' });
+      return NextResponse.json({ success: true, message: 'Password reset successful! You can now log in.' });
     }
 
-    return NextResponse.json({ error: 'Invalid action.' }, { status: 400 });
+    return NextResponse.json({ success: false, error: 'Invalid action.', message: 'Invalid action.' }, { status: 400 });
   } catch (error) {
     console.error('Forgot password error:', error);
-    return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Internal server error.', message: 'Internal server error.' }, { status: 500 });
   }
 }

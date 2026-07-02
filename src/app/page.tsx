@@ -36,7 +36,8 @@ export default function AuthPage() {
   const [identifier, setIdentifier] = useState(''); // Email or Phone for Login & Forgot
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [regIdentifier, setRegIdentifier] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPhone, setRegPhone] = useState('');
   
   // Forgot Password Steps: 1 = Request OTP, 2 = Verify OTP and Reset
   const [forgotStep, setForgotStep] = useState(1);
@@ -53,6 +54,31 @@ export default function AuthPage() {
   const activePasswordForStrength = authMode === 'REGISTER' ? password : newPassword;
   const strength = useMemo(() => getPasswordStrength(activePasswordForStrength), [activePasswordForStrength]);
   const passedCount = useMemo(() => Object.values(strength).filter(Boolean).length, [strength]);
+
+  // Real-time validations for creation
+  const isEmailFormatValid = useMemo(() => {
+    if (!regEmail.trim()) return true;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(regEmail.trim());
+  }, [regEmail]);
+
+  const isPhoneFormatValid = useMemo(() => {
+    if (!regPhone.trim()) return true;
+    return /^\d{10}$/.test(regPhone.trim());
+  }, [regPhone]);
+
+  const hasAtLeastOne = useMemo(() => {
+    return regEmail.trim().length > 0 || regPhone.trim().length > 0;
+  }, [regEmail, regPhone]);
+
+  const isRegFormValid = useMemo(() => {
+    return (
+      fullName.trim().length > 0 &&
+      isPasswordValid(strength) &&
+      isEmailFormatValid &&
+      isPhoneFormatValid &&
+      hasAtLeastOne
+    );
+  }, [fullName, strength, isEmailFormatValid, isPhoneFormatValid, hasAtLeastOne]);
 
   // Floating background particles
   const [particles, setParticles] = useState<{ id: number; left: number; delay: number; size: number; duration: number }[]>([]);
@@ -106,9 +132,10 @@ export default function AuthPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            password, 
-            fullName, 
-            identifier: regIdentifier
+            password: password.trim(), 
+            fullName: fullName.trim(), 
+            email: regEmail.trim(),
+            phoneNumber: regPhone.trim()
           }),
         });
         const data = await res.json();
@@ -201,6 +228,8 @@ export default function AuthPage() {
     setPassword('');
     setNewPassword('');
     setIdentifier('');
+    setRegEmail('');
+    setRegPhone('');
     setForgotStep(1);
   };
 
@@ -273,14 +302,14 @@ export default function AuthPage() {
         {authMode === 'LOGIN' && (
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="field-group">
-              <label htmlFor="login-id">Email or Phone Number</label>
+              <label htmlFor="login-id">Email or Mobile Number</label>
               <div className="input-wrapper">
                 <svg className="field-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 <input
                   id="login-id"
                   type="text"
                   required
-                  placeholder="Enter email or phone number"
+                  placeholder="Enter Email Address or Mobile Number"
                   value={identifier}
                   onChange={e => setIdentifier(e.target.value)}
                 />
@@ -339,19 +368,46 @@ export default function AuthPage() {
             </div>
 
             <div className="field-group">
-              <label htmlFor="reg-identifier">Email Address or Phone Number *</label>
+              <label htmlFor="reg-email">Email Address (Optional)</label>
               <div className="input-wrapper">
                 <svg className="field-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                 <input
-                  id="reg-identifier"
+                  id="reg-email"
                   type="text"
-                  required
-                  placeholder="Enter email or phone"
-                  value={regIdentifier}
-                  onChange={e => setRegIdentifier(e.target.value)}
+                  placeholder="Enter Email Address"
+                  value={regEmail}
+                  onChange={e => setRegEmail(e.target.value)}
                 />
               </div>
+              {regEmail.trim().length > 0 && !isEmailFormatValid && (
+                <span className="inline-error" style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '0.25rem', display: 'block' }}>
+                  Please enter a valid email address.
+                </span>
+              )}
             </div>
+
+            <div className="field-group">
+              <label htmlFor="reg-phone">Mobile Number (Optional)</label>
+              <div className="input-wrapper">
+                <svg className="field-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                <input
+                  id="reg-phone"
+                  type="text"
+                  placeholder="Enter Mobile Number"
+                  value={regPhone}
+                  onChange={e => setRegPhone(e.target.value)}
+                />
+              </div>
+              {regPhone.trim().length > 0 && !isPhoneFormatValid && (
+                <span className="inline-error" style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '0.25rem', display: 'block' }}>
+                  Mobile number must contain exactly 10 digits.
+                </span>
+              )}
+            </div>
+
+            <p className="validation-helper" style={{ color: !hasAtLeastOne ? '#e7c050' : '#8c8c8c', fontSize: '0.8rem', marginTop: '0.5rem', marginBottom: '0.5rem', fontWeight: '500' }}>
+              {!hasAtLeastOne ? '⚠️ Please enter either an Email Address or a Mobile Number.' : 'At least one of Email Address or Mobile Number is required.'}
+            </p>
 
             <div className="field-group">
               <label htmlFor="reg-password">Password *</label>
@@ -404,7 +460,7 @@ export default function AuthPage() {
               </div>
             )}
 
-            <button type="submit" className="auth-submit" disabled={loading || !isPasswordValid(strength)}>
+            <button type="submit" className="auth-submit" disabled={loading || !isRegFormValid}>
               {loading ? <span className="btn-loader"></span> : 'Create Account'}
             </button>
           </form>
@@ -422,14 +478,14 @@ export default function AuthPage() {
             {forgotStep === 1 ? (
               <form onSubmit={handleRequestOtp} className="auth-form">
                 <div className="field-group">
-                  <label htmlFor="for-id">Registered Email or Phone Number</label>
+                  <label htmlFor="for-id">Email or Mobile Number</label>
                   <div className="input-wrapper">
                     <svg className="field-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     <input
                       id="for-id"
                       type="text"
                       required
-                      placeholder="Enter registered email or phone number"
+                      placeholder="Enter Email Address or Mobile Number"
                       value={identifier}
                       onChange={e => setIdentifier(e.target.value)}
                     />

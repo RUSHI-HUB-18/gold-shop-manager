@@ -14,14 +14,21 @@ export async function GET(request: Request) {
     const history = await prisma.calculationHistory.findMany({
       where: whereClause,
       include: {
-        user: { select: { username: true } },
+        user: { select: { fullName: true, email: true, phoneNumber: true } },
         item: { select: { name: true } }
       },
       orderBy: { createdAt: 'desc' },
       take: 100
     });
 
-    return NextResponse.json({ history });
+    const formattedHistory = history.map((entry) => ({
+      ...entry,
+      user: {
+        username: entry.user.fullName || entry.user.email || entry.user.phoneNumber || 'Unknown user',
+      },
+    }));
+
+    return NextResponse.json({ history: formattedHistory });
   } catch (error) {
     console.error('Fetch history error:', error);
     return NextResponse.json({ error: 'Failed to fetch history' }, { status: 500 });
@@ -32,13 +39,20 @@ export async function POST(request: Request) {
   try {
     const data = await request.json();
 
-    // Look up user by username if a UUID wasn't provided
+    // Look up user by identifier if a UUID wasn't provided
     let userId = data.userId;
     const existingUser = await prisma.user.findUnique({ where: { id: userId } });
 
     if (!existingUser) {
-      // Try finding by username as a fallback
-      const userByName = await prisma.user.findUnique({ where: { username: userId } });
+      const userByName = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { fullName: userId },
+            { email: userId },
+            { phoneNumber: userId },
+          ],
+        },
+      });
       if (!userByName) {
         // Last resort: use the first admin user
         const fallbackUser = await prisma.user.findFirst();

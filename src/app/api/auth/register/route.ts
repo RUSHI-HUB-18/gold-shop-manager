@@ -17,12 +17,12 @@ export async function POST(request: Request) {
     const { password, fullName, identifier } = await request.json();
 
     if (!password || !fullName || !identifier) {
-      return NextResponse.json({ error: 'All fields (Full Name, Email/Phone Number, Password) are required.' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'All fields (Full Name, Email/Phone Number, Password) are required.', message: 'All fields (Full Name, Email/Phone Number, Password) are required.' }, { status: 400 });
     }
 
     const passwordError = validatePassword(password);
     if (passwordError) {
-      return NextResponse.json({ error: passwordError }, { status: 400 });
+      return NextResponse.json({ success: false, error: passwordError, message: passwordError }, { status: 400 });
     }
 
     const isEmail = identifier.includes('@');
@@ -32,14 +32,14 @@ export async function POST(request: Request) {
     if (email) {
       const existingEmail = await prisma.user.findUnique({ where: { email } });
       if (existingEmail) {
-        return NextResponse.json({ error: 'This email is already registered.' }, { status: 400 });
+        return NextResponse.json({ success: false, error: 'This email is already registered.', message: 'This email is already registered.' }, { status: 400 });
       }
     }
 
     if (phoneNumber) {
       const existingPhone = await prisma.user.findUnique({ where: { phoneNumber } });
       if (existingPhone) {
-        return NextResponse.json({ error: 'This phone number is already registered.' }, { status: 400 });
+        return NextResponse.json({ success: false, error: 'This phone number is already registered.', message: 'This phone number is already registered.' }, { status: 400 });
       }
     }
 
@@ -62,6 +62,7 @@ export async function POST(request: Request) {
     });
 
     const response = NextResponse.json({
+      success: true,
       message: 'Account created successfully.',
       user: { id: user.id, identifier: user.email ?? user.phoneNumber ?? 'user', role: user.role },
     });
@@ -77,6 +78,6 @@ export async function POST(request: Request) {
     return response;
   } catch (error) {
     console.error('Registration error:', error);
-    return NextResponse.json({ error: 'Internal server error. Please try again.' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Internal server error. Please try again.', message: 'Internal server error. Please try again.' }, { status: 500 });
   }
 }

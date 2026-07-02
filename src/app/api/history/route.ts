@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { requireAuthentication } from '@/lib/auth';
 
 export async function GET(request: Request) {
   try {
+    const user = await requireAuthentication();
+    if (!user) {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
     const itemId = searchParams.get('itemId');
@@ -28,53 +34,26 @@ export async function GET(request: Request) {
       }
     }));
 
-    return NextResponse.json({ history: formattedHistory });
+    return NextResponse.json({ success: true, history: formattedHistory });
   } catch (error) {
     console.error('Fetch history error:', error);
-    return NextResponse.json({ error: 'Failed to fetch history' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Failed to fetch history', message: 'Failed to fetch history' }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
+    const user = await requireAuthentication();
+    if (!user) {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
+
     const data = await request.json();
-
-    // Look up user by username if a UUID wasn't provided
-    let userId = data.userId;
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId || '');
-    
-    let existingUser = null;
-    if (isUuid) {
-      existingUser = await prisma.user.findUnique({ where: { id: userId } });
-    }
-
-    if (!existingUser) {
-      // Try finding by email or phone number as a fallback
-      const userByName = await prisma.user.findFirst({
-        where: {
-          OR: [
-            { email: userId },
-            { phoneNumber: userId }
-          ]
-        }
-      });
-      if (!userByName) {
-        // Last resort: use the first admin user
-        const fallbackUser = await prisma.user.findFirst();
-        if (!fallbackUser) {
-          return NextResponse.json({ error: 'No users found in system' }, { status: 400 });
-        }
-        userId = fallbackUser.id;
-      } else {
-        userId = userByName.id;
-      }
-    } else {
-      userId = existingUser.id;
-    }
+    const userId = user.id; // Determine user ID strictly from verified JWT
 
     // Validate required fields
     if (!data.itemId || !data.weight || !data.goldRate || data.finalAmount === undefined) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Missing required fields', message: 'Missing required fields' }, { status: 400 });
     }
 
     const calculation = await prisma.calculationHistory.create({
@@ -90,9 +69,9 @@ export async function POST(request: Request) {
       }
     });
 
-    return NextResponse.json({ message: 'Calculation saved', calculation });
+    return NextResponse.json({ success: true, message: 'Calculation saved', calculation });
   } catch (error) {
     console.error('Save calc error:', error);
-    return NextResponse.json({ error: 'Failed to save calculation' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Failed to save calculation', message: 'Failed to save calculation' }, { status: 500 });
   }
 }

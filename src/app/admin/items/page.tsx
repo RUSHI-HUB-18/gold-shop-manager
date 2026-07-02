@@ -20,7 +20,13 @@ export default function ItemMaster() {
 
   const fetchItems = () => {
     fetch('/api/items')
-      .then(res => res.json())
+      .then(res => {
+        if (res.status === 401) {
+          window.location.replace('/');
+          throw new Error('Unauthorized');
+        }
+        return res.json();
+      })
       .then(data => {
         if (data.items) setItems(data.items);
         setLoading(false);
@@ -43,6 +49,12 @@ export default function ItemMaster() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, defaultMakingCharge })
       });
+
+      if (res.status === 401) {
+        window.location.replace('/');
+        return;
+      }
+
       const data = await res.json();
       
       if (res.ok) {

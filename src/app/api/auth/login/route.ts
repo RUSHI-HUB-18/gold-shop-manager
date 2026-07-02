@@ -8,7 +8,7 @@ export async function POST(request: Request) {
     const { identifier, password } = await request.json();
 
     if (!identifier || !password) {
-      return NextResponse.json({ error: 'Email/Phone and password are required.' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Email/Phone and password are required.', message: 'Email/Phone and password are required.' }, { status: 400 });
     }
 
     const trimmedIdentifier = identifier.trim();
@@ -24,13 +24,13 @@ export async function POST(request: Request) {
     });
 
     if (!user) {
-      return NextResponse.json({ error: 'Invalid email/phone or password.' }, { status: 401 });
+      return NextResponse.json({ success: false, error: 'Invalid email/phone or password.', message: 'Invalid email/phone or password.' }, { status: 401 });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
     if (!isPasswordValid) {
-      return NextResponse.json({ error: 'Invalid email/phone or password.' }, { status: 401 });
+      return NextResponse.json({ success: false, error: 'Invalid email/phone or password.', message: 'Invalid email/phone or password.' }, { status: 401 });
     }
 
     // Pass email or phone number as username parameter to match signToken type definition
@@ -41,6 +41,7 @@ export async function POST(request: Request) {
     });
 
     const response = NextResponse.json({
+      success: true,
       message: 'Login successful',
       user: {
         id: user.id,
@@ -60,6 +61,6 @@ export async function POST(request: Request) {
     return response;
   } catch (error) {
     console.error('Login error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Internal server error', message: 'Internal server error' }, { status: 500 });
   }
 }

@@ -39,6 +39,11 @@ export default function Calculator() {
           fetch('/api/settings')
         ]);
 
+        if (itemsRes.status === 401 || rateRes.status === 401 || settingsRes.status === 401) {
+          window.location.replace('/');
+          return;
+        }
+
         if (!itemsRes.ok || !rateRes.ok || !settingsRes.ok) {
           setError('Failed to load data from server. Please try refreshing.');
           setLoading(false);
@@ -104,7 +109,6 @@ export default function Calculator() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: 'admin',
           itemId: selectedItem,
           weight: parseFloat(weight),
           purity,
@@ -114,6 +118,11 @@ export default function Calculator() {
           finalAmount: results.finalAmount
         })
       });
+
+      if (res.status === 401) {
+        window.location.replace('/');
+        return;
+      }
 
       if (res.ok) {
         setSaveMessage({ text: '✓ Calculation saved to history!', type: 'success' });

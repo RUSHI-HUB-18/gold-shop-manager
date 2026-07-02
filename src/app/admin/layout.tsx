@@ -1,8 +1,20 @@
+"use client";
+
 import React from 'react';
 import './admin.css';
 import './forms.css';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const handleLogout = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+    window.location.replace('/');
+  };
+
   return (
     <div className="admin-layout">
       <aside className="sidebar">
@@ -17,7 +29,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <a href="/admin/history" className="nav-item">History</a>
         </nav>
         <div className="bottom-nav">
-          <a href="/" className="nav-item text-muted">Logout</a>
+          <a href="/" onClick={handleLogout} className="nav-item text-muted">Logout</a>
         </div>
       </aside>
       <main className="main-content">

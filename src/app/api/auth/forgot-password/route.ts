@@ -59,8 +59,7 @@ export async function POST(request: Request) {
 
       return NextResponse.json({ 
         message: 'OTP code generated successfully!',
-        otp: generatedOtp, // Expose OTP in JSON response for easy local testing in UI
-        devNotice: 'Check the terminal console or copy the code shown in the green notification box.'
+        devNotice: 'Check the server console terminal for the secure OTP code.'
       });
     }
 

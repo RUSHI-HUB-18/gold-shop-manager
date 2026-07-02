@@ -16,8 +16,20 @@ export default function SettingsManagement() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/settings').then(res => res.json()),
-      fetch('/api/gold-rate').then(res => res.json())
+      fetch('/api/settings').then(res => {
+        if (res.status === 401) {
+          window.location.replace('/');
+          throw new Error('Unauthorized');
+        }
+        return res.json();
+      }),
+      fetch('/api/gold-rate').then(res => {
+        if (res.status === 401) {
+          window.location.replace('/');
+          throw new Error('Unauthorized');
+        }
+        return res.json();
+      })
     ]).then(([settingsData, rateData]) => {
       if (settingsData.settings && settingsData.settings.gstPercentage) {
         setGstPercentage(settingsData.settings.gstPercentage.toString());
@@ -44,6 +56,12 @@ export default function SettingsManagement() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ gstPercentage })
       });
+
+      if (res.status === 401) {
+        window.location.replace('/');
+        return;
+      }
+
       const data = await res.json();
       
       if (res.ok) {
@@ -69,6 +87,12 @@ export default function SettingsManagement() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rate22K, rate24K })
       });
+
+      if (res.status === 401) {
+        window.location.replace('/');
+        return;
+      }
+
       const data = await res.json();
       
       if (res.ok) {

@@ -17,6 +17,10 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetch('/api/dashboard-stats')
       .then(res => {
+        if (res.status === 401) {
+          window.location.replace('/');
+          throw new Error('Unauthorized');
+        }
         if (!res.ok) throw new Error('Failed');
         return res.json();
       })

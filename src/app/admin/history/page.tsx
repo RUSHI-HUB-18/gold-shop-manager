@@ -29,6 +29,10 @@ export default function AdminHistory() {
   useEffect(() => {
     fetch('/api/history')
       .then(res => {
+        if (res.status === 401) {
+          window.location.replace('/');
+          throw new Error('Unauthorized');
+        }
         if (!res.ok) throw new Error('Failed');
         return res.json();
       })

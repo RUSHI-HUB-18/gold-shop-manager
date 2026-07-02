@@ -8,14 +8,13 @@ async function main() {
 
   // Create default admin if not exists
   const adminExists = await prisma.user.findUnique({
-    where: { username: 'admin' },
+    where: { email: 'admin@auragold.com' },
   });
 
   if (!adminExists) {
     const passwordHash = await bcrypt.hash('admin123', 10);
     await prisma.user.create({
       data: {
-        username: 'admin',
         passwordHash,
         fullName: 'Store Admin',
         email: 'admin@auragold.com',
@@ -50,3 +49,5 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+
+export {};

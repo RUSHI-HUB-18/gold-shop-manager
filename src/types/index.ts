@@ -25,6 +25,13 @@ export interface GoldRate {
 export interface SystemSettings {
   id?: string;
   gstPercentage: number;
+  shopName: string;
+  shopAddress?: string | null;
+  shopPhone?: string | null;
+  shopGstNumber?: string | null;
+  shopLogo?: string | null;
+  invoiceTerms?: string | null;
+  enableQrCode: boolean;
   updatedAt?: string;
 }
 
@@ -146,6 +153,8 @@ export interface Bill {
   storeAddress?: string | null;
   storePhone?: string | null;
   storeGstNumber?: string | null;
+  storeLogoSnapshot?: string | null;
+  invoiceTermsSnapshot?: string | null;
 
   customerNameSnapshot?: string | null;
   customerMobileSnapshot?: string | null;

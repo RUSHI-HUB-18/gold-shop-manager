@@ -14,7 +14,7 @@ export const billService = {
     return apiClient.get(`/api/bills${queryString ? `?${queryString}` : ''}`);
   },
 
-  async getBillById(id: string): Promise<{ bill: Bill }> {
+  async getBillById(id: string): Promise<{ bill: Bill; enableQrCode: boolean }> {
     return apiClient.get(`/api/bills/${id}`);
   },
 

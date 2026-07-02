@@ -143,11 +143,13 @@ export async function POST(request: Request) {
       }
     }
 
-    // Load Shop snapshots (from metadata configuration variables)
-    const storeName = APP_CONFIG.NAME;
-    const storeAddress = '123, Gold Plaza, Jewel Street';
-    const storePhone = '+91 98765 43210';
-    const storeGstNumber = '27AAAAA1111A1Z1'; // Snapshot standard store numbers
+    // Load Shop snapshots (from configurable SystemSettings database table)
+    const storeName = settingsData?.shopName || APP_CONFIG.NAME;
+    const storeAddress = settingsData?.shopAddress || '123, Gold Plaza, Jewel Street';
+    const storePhone = settingsData?.shopPhone || '+91 98765 43210';
+    const storeGstNumber = settingsData?.shopGstNumber || '27AAAAA1111A1Z1';
+    const storeLogoSnapshot = settingsData?.shopLogo || null;
+    const invoiceTermsSnapshot = settingsData?.invoiceTerms || '1. Goods once sold cannot be returned or exchanged. 2. Subject to local jurisdiction.';
 
     // Server-side Recalculation logic
     let grossSubtotal = 0;
@@ -271,6 +273,8 @@ export async function POST(request: Request) {
             storeAddress,
             storePhone,
             storeGstNumber,
+            storeLogoSnapshot,
+            invoiceTermsSnapshot,
             customerNameSnapshot,
             customerMobileSnapshot,
             customerAddressSnapshot,

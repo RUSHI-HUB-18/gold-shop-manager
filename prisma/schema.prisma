@@ -48,6 +48,16 @@ model ItemMaster {
 model SystemSettings {
   id            String   @id @default(uuid())
   gstPercentage Float    @default(3.0)
+  
+  // Shop details
+  shopName      String   @default("Gold Shop Manager")
+  shopAddress   String?  @default("123, Gold Plaza, Jewel Street")
+  shopPhone     String?  @default("+91 98765 43210")
+  shopGstNumber String?  @default("27AAAAA1111A1Z1")
+  shopLogo      String?  // File path/URL e.g. "uploads/logo.png"
+  invoiceTerms  String?  @default("1. Goods once sold cannot be returned or exchanged. 2. Subject to local jurisdiction.")
+  enableQrCode  Boolean  @default(true)
+
   updatedAt     DateTime @updatedAt
 }
 
@@ -151,6 +161,8 @@ model Bill {
   storeAddress            String?
   storePhone              String?
   storeGstNumber          String?
+  storeLogoSnapshot       String?
+  invoiceTermsSnapshot    String?
 
   // Customer Info Snapshots
   customerNameSnapshot    String?

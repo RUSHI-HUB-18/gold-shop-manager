@@ -11,26 +11,33 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
 
     const { id } = await context.params;
 
-    const bill = await prisma.bill.findUnique({
-      where: { id },
-      include: {
-        items: {
-          orderBy: { id: 'asc' }
-        },
-        customer: {
-          select: { fullName: true, customerCode: true, mobileNumber: true }
-        },
-        user: {
-          select: { fullName: true }
+    const [bill, settings] = await Promise.all([
+      prisma.bill.findUnique({
+        where: { id },
+        include: {
+          items: {
+            orderBy: { id: 'asc' }
+          },
+          customer: {
+            select: { fullName: true, customerCode: true, mobileNumber: true }
+          },
+          user: {
+            select: { fullName: true }
+          }
         }
-      }
-    });
+      }),
+      prisma.systemSettings.findFirst()
+    ]);
 
     if (!bill) {
       return NextResponse.json({ success: false, error: 'Bill not found.' }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, bill });
+    return NextResponse.json({
+      success: true,
+      bill,
+      enableQrCode: settings?.enableQrCode ?? true
+    });
   } catch (error: any) {
     console.error('Bill GET id error:', error);
     if (error.message === 'Unauthorized') {

@@ -231,7 +231,7 @@ export default function AuthPage() {
               <path d="M15.5 22H24.5" stroke="#d4af37" strokeWidth="2" strokeLinecap="round"/>
             </svg>
           </div>
-          <h1 className="logo-text"><span className="gold">Aura</span> Gold</h1>
+          <h1 className="logo-text"><span className="gold">Gold</span> Shop Manager</h1>
           <p className="logo-subtitle">Jewelry Price Management</p>
         </div>
 
@@ -518,7 +518,7 @@ export default function AuthPage() {
         )}
 
         <div className="auth-footer">
-          <p>Aura Gold — Internal Management Tool</p>
+          <p>Gold Shop Manager — Internal Management Tool</p>
         </div>
       </div>
     </div>

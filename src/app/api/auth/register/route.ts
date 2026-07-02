@@ -2,15 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { signToken } from '@/lib/auth';
-
-function validatePassword(password: string): string | null {
-  if (password.length < 8) return 'Password must be at least 8 characters.';
-  if (!/[A-Z]/.test(password)) return 'Password must contain at least one uppercase letter.';
-  if (!/[a-z]/.test(password)) return 'Password must contain at least one lowercase letter.';
-  if (!/[0-9]/.test(password)) return 'Password must contain at least one number.';
-  if (!/[^A-Za-z0-9]/.test(password)) return 'Password must contain at least one special symbol.';
-  return null;
-}
+import { validatePassword, validateEmail, validatePhone } from '@/utils/validation';
 
 export async function POST(request: Request) {
   try {
@@ -34,19 +26,13 @@ export async function POST(request: Request) {
     }
 
     // Email format validation
-    if (email) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        return NextResponse.json({ success: false, error: 'Please enter a valid Email Address.', message: 'Please enter a valid Email Address.' }, { status: 400 });
-      }
+    if (email && !validateEmail(email)) {
+      return NextResponse.json({ success: false, error: 'Please enter a valid Email Address.', message: 'Please enter a valid Email Address.' }, { status: 400 });
     }
 
     // Phone format validation (Reject if contains spaces/formatting/non-digits)
-    if (phoneNumber) {
-      const phoneRegex = /^\d{10}$/;
-      if (!phoneRegex.test(phoneNumber)) {
-        return NextResponse.json({ success: false, error: 'Please enter a valid 10-digit Mobile Number.', message: 'Please enter a valid 10-digit Mobile Number.' }, { status: 400 });
-      }
+    if (phoneNumber && !validatePhone(phoneNumber)) {
+      return NextResponse.json({ success: false, error: 'Please enter a valid 10-digit Mobile Number.', message: 'Please enter a valid 10-digit Mobile Number.' }, { status: 400 });
     }
 
     const passwordError = validatePassword(password);

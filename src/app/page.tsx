@@ -3,6 +3,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import './login.css';
+import { APP_CONFIG } from '@/config/app';
+import { authService } from '@/services/authService';
+import { validatePassword, validateEmail, validatePhone } from '@/utils/validation';
+import { Alert } from '@/components/ui/Alert';
 
 type PasswordStrength = {
   hasMinLength: boolean;
@@ -58,12 +62,12 @@ export default function AuthPage() {
   // Real-time validations for creation
   const isEmailFormatValid = useMemo(() => {
     if (!regEmail.trim()) return true;
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(regEmail.trim());
+    return validateEmail(regEmail);
   }, [regEmail]);
 
   const isPhoneFormatValid = useMemo(() => {
     if (!regPhone.trim()) return true;
-    return /^\d{10}$/.test(regPhone.trim());
+    return validatePhone(regPhone);
   }, [regPhone]);
 
   const hasAtLeastOne = useMemo(() => {
@@ -73,12 +77,12 @@ export default function AuthPage() {
   const isRegFormValid = useMemo(() => {
     return (
       fullName.trim().length > 0 &&
-      isPasswordValid(strength) &&
+      validatePassword(password) === null &&
       isEmailFormatValid &&
       isPhoneFormatValid &&
       hasAtLeastOne
     );
-  }, [fullName, strength, isEmailFormatValid, isPhoneFormatValid, hasAtLeastOne]);
+  }, [fullName, password, isEmailFormatValid, isPhoneFormatValid, hasAtLeastOne]);
 
   // Floating background particles
   const [particles, setParticles] = useState<{ id: number; left: number; delay: number; size: number; duration: number }[]>([]);
@@ -100,8 +104,8 @@ export default function AuthPage() {
     setError('');
     setSuccess('');
 
-    if (authMode === 'REGISTER' && !isPasswordValid(strength)) {
-      setError('Password does not meet the required criteria.');
+    if (authMode === 'REGISTER' && validatePassword(password) !== null) {
+      setError(validatePassword(password) || 'Password does not meet the required criteria.');
       return;
     }
 
@@ -109,45 +113,25 @@ export default function AuthPage() {
 
     if (authMode === 'LOGIN') {
       try {
-        const res = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identifier, password }),
-        });
-        const data = await res.json();
-
-        if (res.ok) {
-          router.push('/admin');
-        } else {
-          setError(data.error || 'Invalid email/phone or password.');
-        }
-      } catch {
-        setError('Network error. Please try again.');
+        await authService.login({ identifier, password });
+        router.push('/admin');
+      } catch (err: any) {
+        setError(err.message || 'Invalid Email Address or Mobile Number.');
       } finally {
         setLoading(false);
       }
     } else if (authMode === 'REGISTER') {
       try {
-        const res = await fetch('/api/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            password: password.trim(), 
-            fullName: fullName.trim(), 
-            email: regEmail.trim(),
-            phoneNumber: regPhone.trim()
-          }),
+        await authService.register({ 
+          password: password.trim(), 
+          fullName: fullName.trim(), 
+          email: regEmail.trim(),
+          phoneNumber: regPhone.trim()
         });
-        const data = await res.json();
-
-        if (res.ok) {
-          setSuccess('Account created successfully! Redirecting...');
-          setTimeout(() => router.push('/admin'), 1200);
-        } else {
-          setError(data.error || 'Failed to create account.');
-        }
-      } catch {
-        setError('Network error. Please try again.');
+        setSuccess('Account created successfully! Redirecting...');
+        setTimeout(() => router.push('/admin'), 1200);
+      } catch (err: any) {
+        setError(err.message || 'Failed to create account.');
       } finally {
         setLoading(false);
       }
@@ -161,22 +145,11 @@ export default function AuthPage() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'send-otp', identifier }),
-      });
-      const data = await res.json();
-
-      if (res.ok) {
-        setSuccess(`OTP code sent! Auto-filled for testing.`);
-        setOtp(data.otp);
-        setForgotStep(2);
-      } else {
-        setError(data.error || 'Failed to request OTP.');
-      }
-    } catch {
-      setError('Network error. Please try again.');
+      await authService.requestOtp(identifier);
+      setSuccess(`OTP code sent! Check server console.`);
+      setForgotStep(2);
+    } catch (err: any) {
+      setError(err.message || 'Failed to request OTP.');
     } finally {
       setLoading(false);
     }
@@ -187,35 +160,25 @@ export default function AuthPage() {
     setError('');
     setSuccess('');
 
-    if (!isPasswordValid(strength)) {
-      setError('New password does not meet the security criteria.');
+    if (validatePassword(newPassword) !== null) {
+      setError(validatePassword(newPassword) || 'New password does not meet the security criteria.');
       return;
     }
 
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'reset-password', identifier, otp, newPassword }),
-      });
-      const data = await res.json();
-
-      if (res.ok) {
-        setSuccess('Password updated successfully! You can now log in.');
-        setTimeout(() => {
-          setAuthMode('LOGIN');
-          setPassword('');
-          setNewPassword('');
-          setForgotStep(1);
-          setSuccess('');
-        }, 1500);
-      } else {
-        setError(data.error || 'Failed to reset password.');
-      }
-    } catch {
-      setError('Network error. Please try again.');
+      await authService.resetPassword({ identifier, otp, newPassword });
+      setSuccess('Password updated successfully! You can now log in.');
+      setTimeout(() => {
+        setAuthMode('LOGIN');
+        setPassword('');
+        setNewPassword('');
+        setForgotStep(1);
+        setSuccess('');
+      }, 1500);
+    } catch (err: any) {
+      setError(err.message || 'Failed to reset password.');
     } finally {
       setLoading(false);
     }
@@ -260,8 +223,8 @@ export default function AuthPage() {
               <path d="M15.5 22H24.5" stroke="#d4af37" strokeWidth="2" strokeLinecap="round"/>
             </svg>
           </div>
-          <h1 className="logo-text"><span className="gold">Gold</span> Shop Manager</h1>
-          <p className="logo-subtitle">Jewelry Price Management</p>
+          <h1 className="logo-text"><span className="gold">{APP_CONFIG.NAME.split(' ')[0]}</span> {APP_CONFIG.NAME.split(' ').slice(1).join(' ')}</h1>
+          <p className="logo-subtitle">{APP_CONFIG.SUBTITLE}</p>
         </div>
 
         {/* Tab Selection */}
@@ -285,18 +248,8 @@ export default function AuthPage() {
           </div>
         )}
 
-        {error && (
-          <div className="auth-alert error">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 10.5a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5zM8.75 4.5v4a.75.75 0 0 1-1.5 0v-4a.75.75 0 0 1 1.5 0z"/></svg>
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="auth-alert success">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm3.22 5.97l-3.5 3.5a.75.75 0 0 1-1.06 0l-1.5-1.5a.75.75 0 1 1 1.06-1.06l.97.97 2.97-2.97a.75.75 0 1 1 1.06 1.06z"/></svg>
-            {success}
-          </div>
-        )}
+        {error && <Alert type="error" message={error} onClose={() => setError('')} />}
+        {success && <Alert type="success" message={success} onClose={() => setSuccess('')} />}
 
         {/* Login Mode */}
         {authMode === 'LOGIN' && (

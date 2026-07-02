@@ -1,15 +1,20 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-
-type Item = { id: string; name: string; defaultMakingCharge: number; };
-type GoldRate = { rate22K: number; rate24K: number | null; date: string; updatedAt: string; };
-type Settings = { gstPercentage: number; };
+import { Item, GoldRate, SystemSettings } from '@/types';
+import { apiClient } from '@/utils/api';
+import { formatCurrency } from '@/utils/currency';
+import { formatPercent } from '@/utils/format';
+import { calculatorService } from '@/services/calculatorService';
+import { Spinner } from '@/components/ui/Spinner';
+import { Alert } from '@/components/ui/Alert';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 
 export default function Calculator() {
   const [items, setItems] = useState<Item[]>([]);
   const [goldRate, setGoldRate] = useState<GoldRate | null>(null);
-  const [settings, setSettings] = useState<Settings | null>(null);
+  const [settings, setSettings] = useState<SystemSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -19,7 +24,7 @@ export default function Calculator() {
   const [weight, setWeight] = useState('');
   const [makingCharge, setMakingCharge] = useState('');
   const [saving, setSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState({ text: '', type: '' });
+  const [saveMessage, setSaveMessage] = useState({ text: '', type: '' as 'success' | 'error' | 'warning' | 'info' });
 
   // Calculation Results
   const [results, setResults] = useState({
@@ -33,36 +38,19 @@ export default function Calculator() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [itemsRes, rateRes, settingsRes] = await Promise.all([
-          fetch('/api/items'),
-          fetch('/api/gold-rate'),
-          fetch('/api/settings')
-        ]);
-
-        if (itemsRes.status === 401 || rateRes.status === 401 || settingsRes.status === 401) {
-          window.location.replace('/');
-          return;
-        }
-
-        if (!itemsRes.ok || !rateRes.ok || !settingsRes.ok) {
-          setError('Failed to load data from server. Please try refreshing.');
-          setLoading(false);
-          return;
-        }
-
         const [itemsData, rateData, settingsData] = await Promise.all([
-          itemsRes.json(),
-          rateRes.json(),
-          settingsRes.json()
+          apiClient.get<{ items: Item[] }>('/api/items'),
+          apiClient.get<{ goldRate: GoldRate }>('/api/gold-rate'),
+          apiClient.get<{ settings: SystemSettings }>('/api/settings')
         ]);
 
         if (itemsData.items) setItems(itemsData.items);
         if (rateData.goldRate) setGoldRate(rateData.goldRate);
         if (settingsData.settings) setSettings(settingsData.settings);
         setLoading(false);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Fetch error:', err);
-        setError('Network error. Please check your connection.');
+        setError(err.message || 'Failed to load configuration.');
         setLoading(false);
       }
     };
@@ -85,13 +73,21 @@ export default function Calculator() {
     const mc = parseFloat(makingCharge) || 0;
 
     const ratePerGram = purity === '22K' ? goldRate.rate22K : (goldRate.rate24K || goldRate.rate22K);
-    const goldValue = w * ratePerGram;
-    const totalMakingCharge = mc;
-    const subtotal = goldValue + totalMakingCharge;
-    const gstAmount = (subtotal * settings.gstPercentage) / 100;
-    const finalAmount = subtotal + gstAmount;
+    
+    const calcResults = calculatorService.calculate({
+      weight: w,
+      makingCharge: mc,
+      goldRate: ratePerGram,
+      gstPercentage: settings.gstPercentage
+    });
 
-    setResults({ goldValue, totalMakingCharge, subtotal, gstAmount, finalAmount });
+    setResults({
+      goldValue: calcResults.goldValue,
+      totalMakingCharge: calcResults.makingCharges,
+      subtotal: calcResults.subtotal,
+      gstAmount: calcResults.gstAmount,
+      finalAmount: calcResults.finalAmount
+    });
   }, [weight, makingCharge, purity, goldRate, settings]);
 
   const handleSave = async () => {
@@ -102,36 +98,22 @@ export default function Calculator() {
     if (!goldRate || !settings) return;
 
     setSaving(true);
-    setSaveMessage({ text: '', type: '' });
+    setSaveMessage({ text: '', type: 'info' });
 
     try {
-      const res = await fetch('/api/history', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          itemId: selectedItem,
-          weight: parseFloat(weight),
-          purity,
-          goldRate: purity === '22K' ? goldRate.rate22K : (goldRate.rate24K || goldRate.rate22K),
-          makingCharge: parseFloat(makingCharge) || 0,
-          gstPercentage: settings.gstPercentage,
-          finalAmount: results.finalAmount
-        })
+      const activeRate = purity === '22K' ? goldRate.rate22K : (goldRate.rate24K || goldRate.rate22K);
+      await apiClient.post('/api/history', {
+        itemId: selectedItem,
+        weight: parseFloat(weight),
+        purity,
+        goldRate: activeRate,
+        makingCharge: parseFloat(makingCharge) || 0,
+        gstPercentage: settings.gstPercentage,
+        finalAmount: results.finalAmount
       });
-
-      if (res.status === 401) {
-        window.location.replace('/');
-        return;
-      }
-
-      if (res.ok) {
-        setSaveMessage({ text: '✓ Calculation saved to history!', type: 'success' });
-      } else {
-        const data = await res.json();
-        setSaveMessage({ text: data.error || 'Failed to save', type: 'error' });
-      }
-    } catch (err) {
-      setSaveMessage({ text: 'Network error while saving.', type: 'error' });
+      setSaveMessage({ text: '✓ Calculation saved to history!', type: 'success' });
+    } catch (err: any) {
+      setSaveMessage({ text: err.message || 'Network error while saving.', type: 'error' });
     } finally {
       setSaving(false);
     }
@@ -142,14 +124,15 @@ export default function Calculator() {
     setPurity('22K');
     setWeight('');
     setMakingCharge('');
-    setSaveMessage({ text: '', type: '' });
+    setSaveMessage({ text: '', type: 'info' });
     setResults({ goldValue: 0, totalMakingCharge: 0, subtotal: 0, gstAmount: 0, finalAmount: 0 });
   };
 
   if (loading) {
     return (
-      <div className="loading-state">
-        <p>Loading Calculator Engine...</p>
+      <div className="loading-state" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '1rem' }}>
+        <Spinner size="lg" />
+        <p style={{ opacity: 0.7 }}>Loading Calculator Engine...</p>
       </div>
     );
   }
@@ -157,8 +140,8 @@ export default function Calculator() {
   if (error) {
     return (
       <div style={{ padding: '2rem' }}>
-        <div className="alert error">{error}</div>
-        <button className="primary-btn" onClick={() => window.location.reload()}>Retry</button>
+        <Alert type="error" message={error} />
+        <Button onClick={() => window.location.reload()}>Retry</Button>
       </div>
     );
   }
@@ -166,9 +149,10 @@ export default function Calculator() {
   if (!goldRate) {
     return (
       <div style={{ padding: '2rem' }}>
-        <div className="alert error" style={{ fontSize: '1.1rem' }}>
-          ⚠️ Today&apos;s gold rate has not been set yet. Go to <a href="/admin/settings" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Settings</a> to set the rate.
-        </div>
+        <Alert
+          type="error"
+          message="Today's gold rate has not been set yet. Please visit the Settings page to configure it."
+        />
       </div>
     );
   }
@@ -182,14 +166,12 @@ export default function Calculator() {
         </div>
         <div style={{ textAlign: 'right', background: 'linear-gradient(135deg, #d4af37, #b8962e)', color: '#fff', padding: '0.75rem 1.5rem', borderRadius: 'var(--radius)', boxShadow: '0 4px 14px rgba(212, 175, 55, 0.35)' }}>
           <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.9 }}>Today&apos;s 22K Rate</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>₹ {goldRate.rate22K.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+          <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{formatCurrency(goldRate.rate22K)}</div>
         </div>
       </header>
 
       {saveMessage.text && (
-        <div className={`alert ${saveMessage.type}`} style={{ marginBottom: '1.5rem' }}>
-          {saveMessage.text}
-        </div>
+        <Alert type={saveMessage.type} message={saveMessage.text} onClose={() => setSaveMessage({ text: '', type: 'info' })} />
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
@@ -255,9 +237,9 @@ export default function Calculator() {
             </div>
 
             <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-              <button type="button" className="primary-btn" style={{ flex: 1 }} onClick={handleSave} disabled={saving}>
-                {saving ? 'Saving...' : '💾 Save Calculation'}
-              </button>
+              <Button type="button" className="primary-btn" style={{ flex: 1 }} onClick={handleSave} loading={saving}>
+                Save Calculation
+              </Button>
               <button type="button" onClick={handleReset} style={{ flex: 0.5, padding: '0.875rem 1.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--foreground)', fontFamily: 'inherit', fontSize: '1rem', fontWeight: '600', cursor: 'pointer' }}>
                 Reset
               </button>
@@ -269,26 +251,26 @@ export default function Calculator() {
         <div className="form-container" style={{ backgroundColor: 'var(--secondary)', color: 'var(--secondary-foreground)', display: 'flex', flexDirection: 'column' }}>
           <h2 style={{ fontSize: '1.1rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem', color: 'var(--muted-foreground)' }}>Live Breakdown</h2>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifySelf: 'space-between', justifyContent: 'space-between', marginBottom: '1rem' }}>
             <span style={{ color: 'var(--muted-foreground)' }}>Gold Value ({purity})</span>
-            <span style={{ fontWeight: '500' }}>₹ {results.goldValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+            <span style={{ fontWeight: '500' }}>{formatCurrency(results.goldValue)}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifySelf: 'space-between', justifyContent: 'space-between', marginBottom: '1rem' }}>
             <span style={{ color: 'var(--muted-foreground)' }}>Making Charges</span>
-            <span style={{ fontWeight: '500' }}>₹ {results.totalMakingCharge.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+            <span style={{ fontWeight: '500' }}>{formatCurrency(results.totalMakingCharge)}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', borderTop: '1px dashed var(--border)', paddingTop: '1rem' }}>
+          <div style={{ display: 'flex', justifySelf: 'space-between', justifyContent: 'space-between', marginBottom: '1rem', borderTop: '1px dashed var(--border)', paddingTop: '1rem' }}>
             <span>Subtotal</span>
-            <span style={{ fontWeight: '600' }}>₹ {results.subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+            <span style={{ fontWeight: '600' }}>{formatCurrency(results.subtotal)}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-            <span style={{ color: 'var(--muted-foreground)' }}>GST ({settings?.gstPercentage}%)</span>
-            <span style={{ fontWeight: '500' }}>₹ {results.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+          <div style={{ display: 'flex', justifySelf: 'space-between', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <span style={{ color: 'var(--muted-foreground)' }}>GST ({formatPercent(settings?.gstPercentage || 0)})</span>
+            <span style={{ fontWeight: '500' }}>{formatCurrency(results.gstAmount)}</span>
           </div>
 
-          <div style={{ marginTop: 'auto', borderTop: '2px solid var(--primary)', paddingTop: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ marginTop: 'auto', borderTop: '2px solid var(--primary)', paddingTop: '1.5rem', display: 'flex', justifySelf: 'space-between', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>Final Amount</span>
-            <span style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--primary)' }}>₹ {results.finalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+            <span style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--primary)' }}>{formatCurrency(results.finalAmount)}</span>
           </div>
         </div>
       </div>

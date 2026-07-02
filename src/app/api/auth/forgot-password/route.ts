@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { validatePassword, validateEmail, validatePhone } from '@/utils/validation';
+import { logger } from '@/utils/logger';
 
 declare global {
   var otpStore: Map<string, { otp: string; expires: number }> | undefined;
@@ -9,15 +11,6 @@ declare global {
 const otps = globalThis.otpStore || new Map<string, { otp: string; expires: number }>();
 if (process.env.NODE_ENV !== 'production') {
   globalThis.otpStore = otps;
-}
-
-function validatePassword(password: string): string | null {
-  if (password.length < 8) return 'Password must be at least 8 characters.';
-  if (!/[A-Z]/.test(password)) return 'Password must contain at least one uppercase letter.';
-  if (!/[a-z]/.test(password)) return 'Password must contain at least one lowercase letter.';
-  if (!/[0-9]/.test(password)) return 'Password must contain at least one number.';
-  if (!/[^A-Za-z0-9]/.test(password)) return 'Password must contain at least one special symbol.';
-  return null;
 }
 
 export async function POST(request: Request) {
@@ -30,15 +23,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Email or Mobile Number is required.', message: 'Email or Mobile Number is required.' }, { status: 400 });
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const phoneRegex = /^\d{10}$/;
-
     let user = null;
 
-    if (emailRegex.test(trimmedIdentifier)) {
+    if (validateEmail(trimmedIdentifier)) {
       const email = trimmedIdentifier.toLowerCase();
       user = await prisma.user.findUnique({ where: { email } });
-    } else if (phoneRegex.test(trimmedIdentifier)) {
+    } else if (validatePhone(trimmedIdentifier)) {
       const phoneNumber = trimmedIdentifier;
       user = await prisma.user.findUnique({ where: { phoneNumber } });
     } else {
@@ -57,10 +47,10 @@ export async function POST(request: Request) {
       const expires = Date.now() + 5 * 60 * 1000;
       otps.set(key, { otp: generatedOtp, expires });
 
-      console.log('\n=============================================');
-      console.log(`🔐 OTP REQUEST FOR: ${user.email} (${user.phoneNumber})`);
-      console.log(`🔑 SECURE OTP CODE: ${generatedOtp}`);
-      console.log('=============================================\n');
+      logger.otp('\n=============================================');
+      logger.otp(`🔐 OTP REQUEST FOR: ${user.email} (${user.phoneNumber})`);
+      logger.otp(`🔑 SECURE OTP CODE: ${generatedOtp}`);
+      logger.otp('=============================================\n');
 
       return NextResponse.json({ 
         message: 'OTP code generated successfully!',

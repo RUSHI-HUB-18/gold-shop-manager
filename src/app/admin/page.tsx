@@ -1,29 +1,18 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-
-type Stats = {
-  rate22K: number;
-  lastUpdated: string | null;
-  updatedBy: string | null;
-  calculationsCount: number;
-  activeItemsCount: number;
-};
+import { DashboardStats } from '@/types';
+import { apiClient } from '@/utils/api';
+import { formatCurrency } from '@/utils/currency';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { Card } from '@/components/ui/Card';
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/dashboard-stats')
-      .then(res => {
-        if (res.status === 401) {
-          window.location.replace('/');
-          throw new Error('Unauthorized');
-        }
-        if (!res.ok) throw new Error('Failed');
-        return res.json();
-      })
+    apiClient.get<DashboardStats>('/api/dashboard-stats')
       .then(data => {
         setStats(data);
         setLoading(false);
@@ -36,8 +25,31 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="loading-state">
-        <p>Loading overview stats...</p>
+      <div className="dashboard-container fade-in">
+        <header className="dashboard-header" style={{ marginBottom: '2rem' }}>
+          <Skeleton width="150px" height="32px" />
+          <Skeleton width="300px" height="20px" style={{ marginTop: '0.5rem' }} />
+        </header>
+        
+        <div className="stats-grid">
+          <Card>
+            <Skeleton width="140px" height="18px" />
+            <Skeleton width="110px" height="36px" style={{ marginTop: '1rem' }} />
+            <Skeleton width="200px" height="14px" style={{ marginTop: '0.8rem' }} />
+          </Card>
+          
+          <Card>
+            <Skeleton width="140px" height="18px" />
+            <Skeleton width="50px" height="36px" style={{ marginTop: '1rem' }} />
+            <Skeleton width="110px" height="14px" style={{ marginTop: '0.8rem' }} />
+          </Card>
+          
+          <Card>
+            <Skeleton width="140px" height="18px" />
+            <Skeleton width="50px" height="36px" style={{ marginTop: '1rem' }} />
+            <Skeleton width="140px" height="14px" style={{ marginTop: '0.8rem' }} />
+          </Card>
+        </div>
       </div>
     );
   }
@@ -54,27 +66,27 @@ export default function AdminDashboard() {
       </header>
       
       <div className="stats-grid">
-        <div className="stat-card">
+        <Card className="stat-card">
           <h3 className="stat-label">Today&apos;s Gold Rate (22K)</h3>
-          <p className="stat-value gold-text">
-            ₹ {stats?.rate22K ? stats.rate22K.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '0.00'} <span style={{ fontSize: '1rem', fontWeight: 'normal', color: 'var(--muted-foreground)' }}>/g</span>
+          <p className="stat-value gold-text" style={{ margin: '0.5rem 0' }}>
+            {stats?.rate22K ? formatCurrency(stats.rate22K) : '₹0.00'} <span style={{ fontSize: '1rem', fontWeight: 'normal', color: 'var(--muted-foreground)' }}>/g</span>
           </p>
           <span className="stat-indicator" style={{ fontSize: '0.8rem', color: stats?.lastUpdated ? '#16a34a' : 'var(--muted-foreground)', fontWeight: stats?.lastUpdated ? '600' : 'normal' }}>
             {lastUpdatedText}
           </span>
-        </div>
+        </Card>
         
-        <div className="stat-card">
+        <Card className="stat-card">
           <h3 className="stat-label">Calculations Today</h3>
-          <p className="stat-value">{stats?.calculationsCount || 0}</p>
+          <p className="stat-value" style={{ margin: '0.5rem 0' }}>{stats?.calculationsCount || 0}</p>
           <span className="stat-indicator" style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)' }}>Across all staff</span>
-        </div>
+        </Card>
         
-        <div className="stat-card">
+        <Card className="stat-card">
           <h3 className="stat-label">Active Items</h3>
-          <p className="stat-value">{stats?.activeItemsCount || 0}</p>
+          <p className="stat-value" style={{ margin: '0.5rem 0' }}>{stats?.activeItemsCount || 0}</p>
           <span className="stat-indicator" style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)' }}>Item types configured</span>
-        </div>
+        </Card>
       </div>
     </div>
   );

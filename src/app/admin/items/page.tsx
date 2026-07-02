@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-
-type Item = {
-  id: string;
-  name: string;
-  defaultMakingCharge: number;
-  isActive: boolean;
-};
+import { Item } from '@/types';
+import { apiClient } from '@/utils/api';
+import { formatCurrency } from '@/utils/currency';
+import { Spinner } from '@/components/ui/Spinner';
+import { Alert } from '@/components/ui/Alert';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Button } from '@/components/ui/Button';
 
 export default function ItemMaster() {
   const [items, setItems] = useState<Item[]>([]);
@@ -16,22 +16,18 @@ export default function ItemMaster() {
   const [name, setName] = useState('');
   const [defaultMakingCharge, setDefaultMakingCharge] = useState('');
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState({ text: '', type: '' });
+  const [message, setMessage] = useState({ text: '', type: 'info' as 'success' | 'error' | 'warning' | 'info' });
 
   const fetchItems = () => {
-    fetch('/api/items')
-      .then(res => {
-        if (res.status === 401) {
-          window.location.replace('/');
-          throw new Error('Unauthorized');
-        }
-        return res.json();
-      })
+    apiClient.get<{ items: Item[] }>('/api/items')
       .then(data => {
         if (data.items) setItems(data.items);
         setLoading(false);
       })
-      .catch(console.error);
+      .catch(err => {
+        console.error('Fetch items error:', err);
+        setLoading(false);
+      });
   };
 
   useEffect(() => {
@@ -41,32 +37,16 @@ export default function ItemMaster() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setMessage({ text: '', type: '' });
+    setMessage({ text: '', type: 'info' });
 
     try {
-      const res = await fetch('/api/items', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, defaultMakingCharge })
-      });
-
-      if (res.status === 401) {
-        window.location.replace('/');
-        return;
-      }
-
-      const data = await res.json();
-      
-      if (res.ok) {
-        setMessage({ text: 'Item created successfully!', type: 'success' });
-        setName('');
-        setDefaultMakingCharge('');
-        fetchItems(); // Refresh the list
-      } else {
-        setMessage({ text: data.error || 'Failed to create item', type: 'error' });
-      }
-    } catch (err) {
-      setMessage({ text: 'Network error occurred', type: 'error' });
+      await apiClient.post('/api/items', { name, defaultMakingCharge });
+      setMessage({ text: 'Item created successfully!', type: 'success' });
+      setName('');
+      setDefaultMakingCharge('');
+      fetchItems(); // Refresh the list
+    } catch (err: any) {
+      setMessage({ text: err.message || 'Failed to create item', type: 'error' });
     } finally {
       setSaving(false);
     }
@@ -83,9 +63,7 @@ export default function ItemMaster() {
         <div className="form-container">
           <h2 style={{ marginBottom: '1.5rem', fontSize: '1.25rem' }}>Add New Item</h2>
           {message.text && (
-            <div className={`alert ${message.type}`}>
-              {message.text}
-            </div>
+            <Alert type={message.type} message={message.text} onClose={() => setMessage({ text: '', type: 'info' })} />
           )}
 
           <form onSubmit={handleSubmit} className="premium-form">
@@ -121,18 +99,21 @@ export default function ItemMaster() {
               </div>
             </div>
 
-            <button type="submit" className="primary-btn" disabled={saving}>
-              {saving ? 'Saving...' : 'Add Item'}
-            </button>
+            <Button type="submit" className="primary-btn" loading={saving}>
+              Add Item
+            </Button>
           </form>
         </div>
 
         <div className="form-container">
           <h2 style={{ marginBottom: '1.5rem', fontSize: '1.25rem' }}>Active Items</h2>
           {loading ? (
-            <div className="text-muted">Loading items...</div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem', gap: '0.5rem' }}>
+              <Spinner size="md" />
+              <span className="text-muted">Loading items...</span>
+            </div>
           ) : items.length === 0 ? (
-            <div className="text-muted">No items found. Add one above.</div>
+            <EmptyState title="No Items Found" description="Add your first jewelry item type using the form on the left." />
           ) : (
             <div className="data-table">
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
@@ -147,7 +128,7 @@ export default function ItemMaster() {
                   {items.map(item => (
                     <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '0.75rem' }}>{item.name}</td>
-                      <td style={{ padding: '0.75rem' }} className="gold-text font-semibold">₹ {item.defaultMakingCharge.toFixed(2)}</td>
+                      <td style={{ padding: '0.75rem' }} className="gold-text font-semibold">{formatCurrency(item.defaultMakingCharge)}</td>
                       <td style={{ padding: '0.75rem' }}>
                         <span style={{ 
                           padding: '0.25rem 0.5rem', 

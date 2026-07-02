@@ -1,20 +1,14 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { HistoryEntry } from '@/types';
+import { apiClient } from '@/utils/api';
+import { formatCurrency } from '@/utils/currency';
+import { formatDate } from '@/utils/date';
+import { formatPercent } from '@/utils/format';
+import { Spinner } from '@/components/ui/Spinner';
+import { EmptyState } from '@/components/ui/EmptyState';
 import '../../admin/forms.css';
-
-type HistoryEntry = {
-  id: string;
-  weight: number;
-  purity: string;
-  goldRate: number;
-  makingCharge: number;
-  gstPercentage: number;
-  finalAmount: number;
-  createdAt: string;
-  user: { username: string };
-  item: { name: string };
-};
 
 export default function AdminHistory() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -27,15 +21,7 @@ export default function AdminHistory() {
   const [userFilter, setUserFilter] = useState('ALL');
 
   useEffect(() => {
-    fetch('/api/history')
-      .then(res => {
-        if (res.status === 401) {
-          window.location.replace('/');
-          throw new Error('Unauthorized');
-        }
-        if (!res.ok) throw new Error('Failed');
-        return res.json();
-      })
+    apiClient.get<{ history: HistoryEntry[] }>('/api/history')
       .then(data => {
         if (data.history) {
           setHistory(data.history);
@@ -44,7 +30,7 @@ export default function AdminHistory() {
         setLoading(false);
       })
       .catch((err) => {
-        console.error(err);
+        console.error('History load error:', err);
         setLoading(false);
       });
   }, []);
@@ -130,9 +116,12 @@ export default function AdminHistory() {
 
       <div className="form-container">
         {loading ? (
-          <div className="text-muted" style={{ padding: '2rem', textAlign: 'center' }}>Loading history...</div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem', gap: '1rem' }}>
+            <Spinner size="md" />
+            <span className="text-muted">Loading history...</span>
+          </div>
         ) : filteredHistory.length === 0 ? (
-          <div className="text-muted" style={{ padding: '2rem', textAlign: 'center' }}>No calculations found matching filters.</div>
+          <EmptyState title="No Records" description="No calculations found matching the selected filters." />
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
@@ -152,16 +141,16 @@ export default function AdminHistory() {
               <tbody>
                 {filteredHistory.map(h => (
                   <tr key={h.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '0.75rem', whiteSpace: 'nowrap' }}>{new Date(h.createdAt).toLocaleDateString('en-IN')}</td>
+                    <td style={{ padding: '0.75rem', whiteSpace: 'nowrap' }}>{formatDate(h.createdAt)}</td>
                     <td style={{ padding: '0.75rem' }}>{h.user.username}</td>
                     <td style={{ padding: '0.75rem' }}>{h.item.name}</td>
                     <td style={{ padding: '0.75rem' }}>{h.weight}g</td>
                     <td style={{ padding: '0.75rem' }}>{h.purity}</td>
-                    <td style={{ padding: '0.75rem' }}>₹{h.goldRate.toLocaleString('en-IN')}</td>
-                    <td style={{ padding: '0.75rem' }}>₹{h.makingCharge.toLocaleString('en-IN')}</td>
-                    <td style={{ padding: '0.75rem' }}>{h.gstPercentage}%</td>
+                    <td style={{ padding: '0.75rem' }}>{formatCurrency(h.goldRate)}</td>
+                    <td style={{ padding: '0.75rem' }}>{formatCurrency(h.makingCharge)}</td>
+                    <td style={{ padding: '0.75rem' }}>{formatPercent(h.gstPercentage)}</td>
                     <td style={{ padding: '0.75rem', fontWeight: '700', color: 'var(--primary)' }}>
-                      ₹{h.finalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      {formatCurrency(h.finalAmount)}
                     </td>
                   </tr>
                 ))}

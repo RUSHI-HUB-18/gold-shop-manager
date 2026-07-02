@@ -1,6 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { settingsService } from '@/services/settingsService';
+import { Spinner } from '@/components/ui/Spinner';
+import { Alert } from '@/components/ui/Alert';
+import { Button } from '@/components/ui/Button';
 
 export default function SettingsManagement() {
   const [gstPercentage, setGstPercentage] = useState('');
@@ -11,25 +15,13 @@ export default function SettingsManagement() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [savingRate, setSavingRate] = useState(false);
   
-  const [settingsMessage, setSettingsMessage] = useState({ text: '', type: '' });
-  const [rateMessage, setRateMessage] = useState({ text: '', type: '' });
+  const [settingsMessage, setSettingsMessage] = useState({ text: '', type: 'info' as 'success' | 'error' | 'warning' | 'info' });
+  const [rateMessage, setRateMessage] = useState({ text: '', type: 'info' as 'success' | 'error' | 'warning' | 'info' });
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/settings').then(res => {
-        if (res.status === 401) {
-          window.location.replace('/');
-          throw new Error('Unauthorized');
-        }
-        return res.json();
-      }),
-      fetch('/api/gold-rate').then(res => {
-        if (res.status === 401) {
-          window.location.replace('/');
-          throw new Error('Unauthorized');
-        }
-        return res.json();
-      })
+      settingsService.getSettings(),
+      settingsService.getGoldRate()
     ]).then(([settingsData, rateData]) => {
       if (settingsData.settings && settingsData.settings.gstPercentage) {
         setGstPercentage(settingsData.settings.gstPercentage.toString());
@@ -40,7 +32,7 @@ export default function SettingsManagement() {
       }
       setLoading(false);
     }).catch(err => {
-      console.error(err);
+      console.error('Settings load error:', err);
       setLoading(false);
     });
   }, []);
@@ -48,29 +40,13 @@ export default function SettingsManagement() {
   const handleSettingsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingSettings(true);
-    setSettingsMessage({ text: '', type: '' });
+    setSettingsMessage({ text: '', type: 'info' });
 
     try {
-      const res = await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gstPercentage })
-      });
-
-      if (res.status === 401) {
-        window.location.replace('/');
-        return;
-      }
-
-      const data = await res.json();
-      
-      if (res.ok) {
-        setSettingsMessage({ text: 'GST settings updated successfully!', type: 'success' });
-      } else {
-        setSettingsMessage({ text: data.error || 'Failed to update settings', type: 'error' });
-      }
-    } catch (err) {
-      setSettingsMessage({ text: 'Network error occurred', type: 'error' });
+      await settingsService.updateSettings(parseFloat(gstPercentage));
+      setSettingsMessage({ text: 'GST settings updated successfully!', type: 'success' });
+    } catch (err: any) {
+      setSettingsMessage({ text: err.message || 'Failed to update settings', type: 'error' });
     } finally {
       setSavingSettings(false);
     }
@@ -79,35 +55,28 @@ export default function SettingsManagement() {
   const handleRateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingRate(true);
-    setRateMessage({ text: '', type: '' });
+    setRateMessage({ text: '', type: 'info' });
 
     try {
-      const res = await fetch('/api/gold-rate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rate22K, rate24K })
-      });
-
-      if (res.status === 401) {
-        window.location.replace('/');
-        return;
-      }
-
-      const data = await res.json();
-      
-      if (res.ok) {
-        setRateMessage({ text: 'Gold rate updated successfully for today!', type: 'success' });
-      } else {
-        setRateMessage({ text: data.error || 'Failed to update rate', type: 'error' });
-      }
-    } catch (err) {
-      setRateMessage({ text: 'Network error occurred', type: 'error' });
+      const parsed22K = parseFloat(rate22K);
+      const parsed24K = rate24K ? parseFloat(rate24K) : null;
+      await settingsService.updateGoldRate(parsed22K, parsed24K);
+      setRateMessage({ text: 'Gold rate updated successfully for today!', type: 'success' });
+    } catch (err: any) {
+      setRateMessage({ text: err.message || 'Failed to update rate', type: 'error' });
     } finally {
       setSavingRate(false);
     }
   };
 
-  if (loading) return <div className="loading-state">Loading configuration settings...</div>;
+  if (loading) {
+    return (
+      <div className="loading-state" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '1rem' }}>
+        <Spinner size="lg" />
+        <p style={{ opacity: 0.7 }}>Loading configuration settings...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="admin-page fade-in" style={{ maxWidth: '900px' }}>
@@ -124,9 +93,7 @@ export default function SettingsManagement() {
           <p className="text-muted" style={{ marginBottom: '1.5rem', fontSize: '0.9rem' }}>Set the fixed gold rate for today. This will instantly apply to all staff calculators.</p>
           
           {rateMessage.text && (
-            <div className={`alert ${rateMessage.type}`}>
-              {rateMessage.text}
-            </div>
+            <Alert type={rateMessage.type} message={rateMessage.text} onClose={() => setRateMessage({ text: '', type: 'info' })} />
           )}
 
           <form onSubmit={handleRateSubmit} className="premium-form">
@@ -165,9 +132,9 @@ export default function SettingsManagement() {
               </div>
             </div>
 
-            <button type="submit" className="primary-btn" disabled={savingRate} style={{ alignSelf: 'flex-start' }}>
-              {savingRate ? 'Updating...' : 'Set Today\'s Rate'}
-            </button>
+            <Button type="submit" className="primary-btn" loading={savingRate} style={{ alignSelf: 'flex-start' }}>
+              Set Today's Rate
+            </Button>
           </form>
         </div>
 
@@ -177,9 +144,7 @@ export default function SettingsManagement() {
           <p className="text-muted" style={{ marginBottom: '1.5rem', fontSize: '0.9rem' }}>Configure global tax parameters. Staff members cannot override this value during calculation.</p>
           
           {settingsMessage.text && (
-            <div className={`alert ${settingsMessage.type}`}>
-              {settingsMessage.text}
-            </div>
+            <Alert type={settingsMessage.type} message={settingsMessage.text} onClose={() => setSettingsMessage({ text: '', type: 'info' })} />
           )}
 
           <form onSubmit={handleSettingsSubmit} className="premium-form">
@@ -201,9 +166,9 @@ export default function SettingsManagement() {
               </div>
             </div>
 
-            <button type="submit" className="primary-btn" disabled={savingSettings} style={{ alignSelf: 'flex-start' }}>
-              {savingSettings ? 'Saving...' : 'Save Settings'}
-            </button>
+            <Button type="submit" className="primary-btn" loading={savingSettings} style={{ alignSelf: 'flex-start' }}>
+              Save Settings
+            </Button>
           </form>
         </div>
 

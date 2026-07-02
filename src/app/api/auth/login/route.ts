@@ -33,10 +33,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid email/phone or password.' }, { status: 401 });
     }
 
-    // Pass email as username parameter to match signToken type definition
+    // Pass email or phone number as username parameter to match signToken type definition
     const token = signToken({
       id: user.id,
-      username: user.email,
+      username: user.email ?? user.phoneNumber ?? 'user',
       role: user.role,
     });
 

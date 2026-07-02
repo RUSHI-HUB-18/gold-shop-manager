@@ -14,14 +14,21 @@ export async function GET(request: Request) {
     const history = await prisma.calculationHistory.findMany({
       where: whereClause,
       include: {
-        user: { select: { username: true } },
+        user: { select: { fullName: true, email: true, phoneNumber: true } },
         item: { select: { name: true } }
       },
       orderBy: { createdAt: 'desc' },
       take: 100
     });
 
-    return NextResponse.json({ history });
+    const formattedHistory = history.map(h => ({
+      ...h,
+      user: {
+        username: h.user.email || h.user.phoneNumber || h.user.fullName
+      }
+    }));
+
+    return NextResponse.json({ history: formattedHistory });
   } catch (error) {
     console.error('Fetch history error:', error);
     return NextResponse.json({ error: 'Failed to fetch history' }, { status: 500 });
@@ -34,11 +41,23 @@ export async function POST(request: Request) {
 
     // Look up user by username if a UUID wasn't provided
     let userId = data.userId;
-    const existingUser = await prisma.user.findUnique({ where: { id: userId } });
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId || '');
+    
+    let existingUser = null;
+    if (isUuid) {
+      existingUser = await prisma.user.findUnique({ where: { id: userId } });
+    }
 
     if (!existingUser) {
-      // Try finding by username as a fallback
-      const userByName = await prisma.user.findUnique({ where: { username: userId } });
+      // Try finding by email or phone number as a fallback
+      const userByName = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: userId },
+            { phoneNumber: userId }
+          ]
+        }
+      });
       if (!userByName) {
         // Last resort: use the first admin user
         const fallbackUser = await prisma.user.findFirst();
@@ -49,6 +68,8 @@ export async function POST(request: Request) {
       } else {
         userId = userByName.id;
       }
+    } else {
+      userId = existingUser.id;
     }
 
     // Validate required fields

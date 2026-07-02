@@ -21,6 +21,7 @@ model User {
   updatedAt    DateTime @updatedAt
   
   calculations CalculationHistory[]
+  bills        Bill[]
 }
 
 model GoldRate {
@@ -41,6 +42,7 @@ model ItemMaster {
   updatedAt           DateTime @updatedAt
   
   calculations        CalculationHistory[]
+  billItems           BillItem[]
 }
 
 model SystemSettings {
@@ -91,4 +93,105 @@ model Customer {
   updatedAt    DateTime             @updatedAt
 
   calculations CalculationHistory[]
+  bills        Bill[]
+}
+
+enum DocumentType {
+  INVOICE
+  ESTIMATE
+  QUOTATION
+}
+
+enum BillStatus {
+  DRAFT
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PARTIAL
+  PAID
+}
+
+enum DiscountType {
+  FLAT
+  PERCENTAGE
+}
+
+enum MakingChargeType {
+  FLAT
+  PERCENTAGE
+}
+
+model Bill {
+  id                      String        @id @default(uuid())
+  documentNumber          String        @unique
+  documentType            DocumentType  @default(INVOICE)
+  customerId              String?
+  userId                  String
+  createdByName           String        // Creator display name snapshot
+  invoiceDate             DateTime      @default(now())
+  status                  BillStatus    @default(COMPLETED)
+  paymentStatus           PaymentStatus @default(PAID)
+  version                 Int           @default(1)
+  
+  // Financial breakdowns
+  subtotal                Decimal       @db.Decimal(12, 2)
+  discountType            DiscountType  @default(FLAT)
+  discountValue           Decimal       @default(0.0) @db.Decimal(12, 2)
+  discountAmount          Decimal       @default(0.0) @db.Decimal(12, 2)
+  taxableAmount           Decimal       @db.Decimal(12, 2)
+  gstAmount               Decimal       @db.Decimal(12, 2)
+  total                   Decimal       @db.Decimal(12, 2)
+  notes                   String?       // General notes
+
+  // Shop Info Snapshots
+  storeName               String
+  storeAddress            String?
+  storePhone              String?
+  storeGstNumber          String?
+
+  // Customer Info Snapshots
+  customerNameSnapshot    String?
+  customerMobileSnapshot  String?
+  customerAddressSnapshot String?
+  customerGstSnapshot     String?
+
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+
+  customer                Customer?     @relation(fields: [customerId], references: [id])
+  user                    User          @relation(fields: [userId], references: [id])
+  items                   BillItem[]
+}
+
+model BillItem {
+  id                String           @id @default(uuid())
+  billId            String
+  itemId            String?
+  itemNameSnapshot  String
+  quantity          Int              @default(1)
+  
+  // Weights
+  grossWeight       Decimal          @db.Decimal(10, 3)
+  netWeight         Decimal          @db.Decimal(10, 3)
+  stoneWeight       Decimal          @default(0.0) @db.Decimal(10, 3)
+  purity            String
+  
+  // Pricing Snapshots
+  goldRate          Decimal          @db.Decimal(10, 2)
+  makingChargeType  MakingChargeType @default(FLAT)
+  makingChargeValue Decimal          @db.Decimal(10, 2)
+  makingChargeAmount Decimal         @db.Decimal(10, 2)
+  hallmarkCharge    Decimal          @default(0.0) @db.Decimal(10, 2)
+  wastage           Decimal          @default(0.0) @db.Decimal(10, 3)
+  
+  gstPercentage     Decimal          @db.Decimal(5, 2)
+  gstAmount         Decimal          @db.Decimal(12, 2)
+  amount            Decimal          @db.Decimal(12, 2)
+  remarks           String?
+
+  bill              Bill             @relation(fields: [billId], references: [id], onDelete: Cascade)
+  item              ItemMaster?      @relation(fields: [itemId], references: [id])
 }

@@ -21,6 +21,9 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
             item: { select: { name: true } },
             user: { select: { fullName: true } }
           }
+        },
+        bills: {
+          orderBy: { createdAt: 'desc' }
         }
       }
     });

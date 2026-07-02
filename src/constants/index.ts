@@ -9,6 +9,7 @@ export const API_ROUTES = {
   SETTINGS: '/api/settings',
   HISTORY: '/api/history',
   CUSTOMERS: '/api/customers',
+  BILLS: '/api/bills',
 };
 
 export const PASSWORD_RULES = {

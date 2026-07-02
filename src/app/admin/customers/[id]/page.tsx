@@ -161,7 +161,7 @@ export default function CustomerProfile({ params }: { params: Promise<{ id: stri
                 marginBottom: '-2px'
               }}
             >
-              Bills (Coming Soon)
+              Bills & Invoices
             </button>
             <button
               onClick={() => setActiveTab('payments')}
@@ -244,10 +244,56 @@ export default function CustomerProfile({ params }: { params: Promise<{ id: stri
             )}
 
             {activeTab === 'bills' && (
-              <EmptyState 
-                title="Bills Integration Coming Soon" 
-                description="Once the Phase 4 Billing System is implemented, complete store bills and transactional invoices for this customer will appear here." 
-              />
+              <div>
+                {!(customer as any).bills || (customer as any).bills.length === 0 ? (
+                  <EmptyState 
+                    title="No Invoices Found" 
+                    description="This customer does not have any generated invoices or store estimates yet." 
+                  />
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid var(--border)', color: 'var(--muted-foreground)' }}>
+                          <th style={{ padding: '0.75rem' }}>Invoice No</th>
+                          <th style={{ padding: '0.75rem' }}>Type</th>
+                          <th style={{ padding: '0.75rem' }}>Date</th>
+                          <th style={{ padding: '0.75rem' }}>Status</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'right' }}>Total Amount</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'right' }}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(customer as any).bills.map((bill: any) => (
+                          <tr key={bill.id} style={{ borderBottom: '1px solid var(--border)', verticalAlign: 'middle' }}>
+                            <td style={{ padding: '0.75rem', fontWeight: '600', color: 'var(--primary)' }}>{bill.documentNumber}</td>
+                            <td style={{ padding: '0.75rem', fontSize: '0.8rem', fontWeight: '600' }}>{bill.documentType}</td>
+                            <td style={{ padding: '0.75rem', whiteSpace: 'nowrap' }}>{formatDate(bill.invoiceDate)}</td>
+                            <td style={{ padding: '0.75rem' }}>
+                              <span style={{
+                                padding: '0.2rem 0.5rem',
+                                borderRadius: '999px',
+                                backgroundColor: bill.status === 'COMPLETED' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                color: bill.status === 'COMPLETED' ? '#16a34a' : '#ef4444',
+                                fontSize: '0.7rem',
+                                fontWeight: '600'
+                              }}>{bill.status}</span>
+                            </td>
+                            <td style={{ padding: '0.75rem', fontWeight: 'bold', textAlign: 'right' }}>
+                              {formatCurrency(Number(bill.total))}
+                            </td>
+                            <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                              <a href={`/admin/bills/${bill.id}`}>
+                                <button className="secondary-btn" style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}>Detail</button>
+                              </a>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             )}
 
             {activeTab === 'payments' && (

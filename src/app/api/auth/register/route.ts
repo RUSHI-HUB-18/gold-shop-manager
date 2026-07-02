@@ -57,13 +57,13 @@ export async function POST(request: Request) {
 
     const token = signToken({
       id: user.id,
-      username: user.email || user.phoneNumber,
+      username: user.email ?? user.phoneNumber ?? 'user',
       role: user.role,
     });
 
     const response = NextResponse.json({
       message: 'Account created successfully.',
-      user: { id: user.id, identifier: user.email || user.phoneNumber, role: user.role },
+      user: { id: user.id, identifier: user.email ?? user.phoneNumber ?? 'user', role: user.role },
     });
 
     response.cookies.set('auth_token', token, {

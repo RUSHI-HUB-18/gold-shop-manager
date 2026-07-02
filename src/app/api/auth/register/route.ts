@@ -55,15 +55,21 @@ export async function POST(request: Request) {
       },
     });
 
+    const username = user.email || user.phoneNumber;
+
+    if (!username) {
+      return NextResponse.json({ error: 'User identifier is missing.' }, { status: 500 });
+    }
+
     const token = signToken({
       id: user.id,
-      username: user.email || user.phoneNumber,
+      username,
       role: user.role,
     });
 
     const response = NextResponse.json({
       message: 'Account created successfully.',
-      user: { id: user.id, identifier: user.email || user.phoneNumber, role: user.role },
+      user: { id: user.id, identifier: username, role: user.role },
     });
 
     response.cookies.set('auth_token', token, {

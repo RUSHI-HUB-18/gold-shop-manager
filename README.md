@@ -1,6 +1,8 @@
-# Aura Gold - Jewelry Price Management
+# Gold Shop Manager - Jewelry Price Management
 
-Aura Gold is a premium, full-stack Next.js web application designed to help jewelry store administrators manage daily gold rates, catalog items, and quickly calculate transparent pricing for customers.
+Gold Shop Manager is a premium, full-stack Next.js web application designed to help jewelry store administrators manage daily gold rates, catalog items, and quickly calculate transparent pricing for customers.
+
+The live application is hosted at: **[https://goldshop-portal.netlify.app](https://goldshop-portal.netlify.app)**
 
 ## 🌟 Features
 - **Real-Time Calculator**: Instantly calculate final jewelry prices including daily gold rate, making charges, and GST.
@@ -25,8 +27,8 @@ Make sure you have [Node.js](https://nodejs.org/) installed on your machine.
 ### Installation
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/aura-gold.git
-   cd aura-gold
+   git clone https://github.com/RUSHI-HUB-18/gold-shop-manager.git
+   cd gold-shop-manager
    ```
 
 2. Install dependencies:
@@ -57,7 +59,8 @@ Make sure you have [Node.js](https://nodejs.org/) installed on your machine.
 This project is fully optimized for platforms like Netlify or Vercel. 
 1. Import your GitHub repository into Netlify.
 2. Set the `DATABASE_URL` and `JWT_SECRET` in the Environment Variables section.
-3. Deploy!
+3. Set the build command to `prisma generate && next build`.
+4. Deploy!
 
 ## 🔐 Default Admin Access
 By default, the initial setup can be seeded, or you can register a new account on the homepage.

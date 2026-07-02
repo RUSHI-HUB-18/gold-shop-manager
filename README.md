@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Aura Gold - Jewelry Price Management
 
-## Getting Started
+Aura Gold is a premium, full-stack Next.js web application designed to help jewelry store administrators manage daily gold rates, catalog items, and quickly calculate transparent pricing for customers.
 
-First, run the development server:
+## 🌟 Features
+- **Real-Time Calculator**: Instantly calculate final jewelry prices including daily gold rate, making charges, and GST.
+- **Dynamic Dashboard**: View daily calculation statistics, active catalog items, and today's gold rate at a glance.
+- **24-Hour Rate Reset**: Enforces daily gold rate updates. If a new day begins, calculations are halted until the admin enters the fresh rate.
+- **History Logs**: Every calculation is saved securely with powerful search and filtering (by purity, user, date).
+- **Secure Authentication**: Custom authentication system with secure JWT tokens, bcrypt password hashing, password strength enforcement, and OTP password resets.
+- **Admin Settings**: Easily configure global GST percentages and manage catalog items (add, edit, delete).
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 🛠️ Technology Stack
+- **Frontend**: Next.js (App Router), React, Vanilla CSS (Premium Glassmorphism Design)
+- **Backend**: Next.js API Routes (Node.js)
+- **Database**: PostgreSQL (Neon Database)
+- **ORM**: Prisma (v5)
+- **Authentication**: JWT, bcryptjs
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 Getting Started
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Prerequisites
+Make sure you have [Node.js](https://nodejs.org/) installed on your machine.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Installation
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/your-username/aura-gold.git
+   cd aura-gold
+   ```
 
-## Learn More
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+3. Set up environment variables:
+   Create a `.env` file in the root directory and add your PostgreSQL connection string and a random JWT secret:
+   ```env
+   DATABASE_URL="postgresql://username:password@host/database"
+   JWT_SECRET="your-secure-random-jwt-secret-key"
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+4. Initialize the Database:
+   ```bash
+   npx prisma db push
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+5. Start the development server:
+   ```bash
+   npm run dev
+   ```
 
-## Deploy on Vercel
+6. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📜 Deployment (Netlify/Vercel)
+This project is fully optimized for platforms like Netlify or Vercel. 
+1. Import your GitHub repository into Netlify.
+2. Set the `DATABASE_URL` and `JWT_SECRET` in the Environment Variables section.
+3. Deploy!
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🔐 Default Admin Access
+By default, the initial setup can be seeded, or you can register a new account on the homepage.

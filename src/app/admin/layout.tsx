@@ -35,7 +35,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <a href="/admin/bills" className="nav-item">🧾 Billing</a>
           <a href="/admin/reports" className="nav-item">📈 Reports</a>
           <a href="/admin/items" className="nav-item">Item Master</a>
-          <a href="/admin/settings" className="nav-item">Settings</a>
+          <a href="/admin/settings" className="nav-item">⚙️ Shop Profile</a>
           <a href="/admin/history" className="nav-item">History</a>
         </nav>
         <div className="bottom-nav">

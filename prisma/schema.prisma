@@ -53,10 +53,16 @@ model SystemSettings {
   shopName      String   @default("Gold Shop Manager")
   shopAddress   String?  @default("123, Gold Plaza, Jewel Street")
   shopPhone     String?  @default("+91 98765 43210")
+  shopEmail     String?  @default("info@goldshop.com")
+  shopWebsite   String?  @default("www.goldshop.com")
   shopGstNumber String?  @default("27AAAAA1111A1Z1")
   shopLogo      String?  // File path/URL e.g. "uploads/logo.png"
   invoiceTerms  String?  @default("1. Goods once sold cannot be returned or exchanged. 2. Subject to local jurisdiction.")
   enableQrCode  Boolean  @default(true)
+
+  // Business preferences
+  currency      String   @default("INR")
+  timezone      String   @default("Asia/Kolkata")
 
   updatedAt     DateTime @updatedAt
 }
